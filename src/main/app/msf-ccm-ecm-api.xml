@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+    <http:listener-config name="msf-ccm-ecm-api-httpListenerConfig" host="0.0.0.0" port="8585" doc:name="HTTP Listener Configuration"/>
+     <sftp:connector name="DOXEE_SFTP_CONFIG" validateConnections="true" doc:name="SFTP"/>
+    <apikit:config name="msf-ccm-ecm-api-config" raml="msf-ccm-ecm-api.raml" consoleEnabled="false" doc:name="Router"/>
+    <flow name="msf-ccm-ecm-api-main">
+        <http:listener config-ref="msf-ccm-ecm-api-httpListenerConfig" path="/api/doxee/*" doc:name="HTTP"/>
+        <apikit:router config-ref="msf-ccm-ecm-api-config" doc:name="APIkit Router"/>
+        <exception-strategy ref="msf-ccm-ecm-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="msf-ccm-ecm-api-console">
+        <http:listener config-ref="msf-ccm-ecm-api-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
+        <apikit:console config-ref="msf-ccm-ecm-api-config" doc:name="APIkit Console"/>
+    </flow>
+    <flow name="get:/download/{docname}:msf-ccm-ecm-api-config">
+        <set-payload value="#[NullPayload.getInstance()]" doc:name="Set Payload"/>
+    </flow>
+    <flow name="post:/upload:msf-ccm-ecm-api-config">
+        <set-payload value="#[message.inboundAttachments]" doc:name="Set Payload"/>
+        <foreach doc:name="For Each">
+            <set-variable variableName="fileName" value="#[message.payload.dataSource.part.fileName]" doc:name="set file name"/>
+            <set-payload value="#[payload.getInputStream()]" doc:name="Fetch File Stream"/>
+             <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="DOXEE_SFTP_CONFIG" outputPattern="#[flowVars.fileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path.in}" user="${sftp.user}" password="${sftp.password}" responseTimeout="20000" doc:name="SFTP"/>
+        </foreach>
+        <set-payload value="&lt;docUpload&gt;
+  &lt;status&gt;Uploaded Successfully&lt;/status&gt;
+&lt;/docUpload&gt;" doc:name="Set Response Payload"/>
+    </flow>
+    <flow name="post:/upload/invoice:msf-ccm-ecm-api-config">
+    <set-variable variableName="invoiceFileName" value=" #['InvoiceXML_'+xpath3('//*:BCDocument/*:Invoice/*:InvoiceNumber', message.payload, 'STRING')+'.xml']" doc:name="set Invoice File Name"/>
+        <logger message="Invoice Upload flow: #[flowVars.invoiceFileName]" level="INFO" doc:name="Logger"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="DOXEE_SFTP_CONFIG" outputPattern="#[flowVars.invoiceFileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path.in}" user="${sftp.user}" password="${sftp.password}" responseTimeout="20000" doc:name="SFTP"/>
+        <set-payload value="&lt;invoiceUpload&gt;&#xA;  &lt;invoiceNum&gt;#[flowVars.invoiceFileName]&lt;/invoiceNum&gt;&#xA;  &lt;status&gt;Uploaded Successfully&lt;/status&gt;&#xA;&lt;/invoiceUpload&gt;" doc:name="Set Payload"/>
+    </flow>
+    <flow name="post:/upload/policy:msf-ccm-ecm-api-config">
+    <set-variable variableName="policyFileName" value=" #['PolicyXML_'+xpath3('//*:GWDocument/*:PolicyPeriod/*:PolicyNumber', message.payload, 'STRING')+'.xml']" doc:name="set Policy File Name"/>
+        <logger message="Policy Upload flow: #[flowVars.policyFileName]" level="INFO" doc:name="Logger"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+         <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="DOXEE_SFTP_CONFIG" outputPattern="#[flowVars.policyFileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path.in}" user="${sftp.user}" password="${sftp.password}" responseTimeout="20000" doc:name="SFTP"/>
+        
+        <set-payload value="&lt;policyUpload&gt;&#xA;  &lt;policyNum&gt;#[flowVars.policyFileName]&lt;/policyNum&gt;&#xA;  &lt;status&gt;Uploaded Successfully&lt;/status&gt;&#xA;&lt;/policyUpload&gt;" doc:name="Set Payload"/>
+    </flow>
+    <flow name="post:/upload/quote:msf-ccm-ecm-api-config">
+     <set-variable variableName="quoteFileName" value=" #['QuoteXML_'+xpath3('//*:GWDocument/*:PolicyPeriod/*:ProducerCodeOfRecord/*:Code', message.payload, 'STRING')+'.xml']" doc:name="set Quote File Name"/>
+        <logger message="Quote Upload flow: #[flowVars.quoteFileName]" level="INFO" doc:name="Logger"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <sftp:outbound-endpoint exchange-pattern="one-way" connector-ref="DOXEE_SFTP_CONFIG" outputPattern="#[flowVars.quoteFileName]" host="${sftp.host}" port="${sftp.port}" path="${sftp.path.in}" user="${sftp.user}" password="${sftp.password}" responseTimeout="20000" doc:name="SFTP"/>
+     
+        <set-payload value="&lt;quoteUpload&gt;&#xA;  &lt;quoteNum&gt;#[flowVars.quoteFileName]&lt;/quoteNum&gt;&#xA;  &lt;status&gt;Uploaded Successfully&lt;/status&gt;&#xA;&lt;/quoteUpload&gt;" doc:name="Set Payload"/>
+    </flow>
+    <apikit:mapping-exception-strategy name="msf-ccm-ecm-api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>

@@ -1,0 +1,65 @@
+#%RAML 0.8
+baseUri: https://mocksvc.mulesoft.com/mocks/f68fab4d-8dfd-4959-92b5-7bcd950b30cb
+title: MSF Doxee Batch API
+version: 1.0
+
+/upload:
+  post:
+    description: Upload documents to INPUT Folder of CCM(Doxee)
+    responses:
+      200:
+        body:
+          application/xml:
+            example:  |
+              <docUpload>
+                <docName>abc123</docName>
+                <status>Uploaded Successfully</status>
+              </docUpload> 
+      
+  /invoice:
+    post:
+      description: Upload Invoice documents to INPUT Folder of CCM(Doxee)
+      responses:
+        200:
+          body: 
+            application/xml:
+              example: |
+                <invoiceUpload>
+                  <invoiceNum>abc123</invoiceNum>
+                  <status>Uploaded Successfully</status>
+                </invoiceUpload>
+  /policy:
+    post:
+      description: Upload Policy documents to INPUT Folder of CCM(Doxee)
+      responses:
+        200:
+          body: 
+            application/xml:
+              example: |
+                <policyUpload>
+                  <policyNum>abc123</policyNum>
+                  <status>Uploaded Successfully</status>
+                </policyUpload>
+
+
+               
+  /quote:
+    post:
+      description: Upload Quote documents to INPUT Folder of CCM(Doxee)
+      responses:
+        200:
+          body: 
+            application/xml:
+              example: |
+                <quoteUpload>
+                  <quoteNum>abc123</quoteNum>
+                  <status>Uploaded Successfully</status>
+                </quoteUpload>
+
+/download:
+  /{docname}:
+    displayName: Document Name(File Name)
+    get:
+      description: Download file with given name from OUTPUT Folder of CCM(Doxee)
+      body: 
+        application/xml:
